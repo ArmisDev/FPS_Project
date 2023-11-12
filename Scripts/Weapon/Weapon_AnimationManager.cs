@@ -7,14 +7,13 @@ namespace Project.Weapon
     [RequireComponent(typeof(Weapon_Main), typeof(Animator))]
     public class Weapon_AnimationManager : MonoBehaviour
     {
-        [Header("Components")]
-        [SerializeField] private Player_Movement player_Movement;
-        [SerializeField] private Player_Jump player_Jump;
+        private Player_Movement player_Movement;
+        private Player_Jump player_Jump;
         private Animator animator;
         private Weapon_Main weapon_Main;
 
         //Weapon Fire Animation
-        [SerializeField] private Transform fireAnimTransform; //Cannot use current transform since it is being used by animations.
+        private Transform fireAnimTransform; //Cannot use current transform since it is being used by animations.
         public AnimationCurve recoilCurvePosZ;
         public AnimationCurve recoilCurveRotY;
         [SerializeField] private float animationTime = 0.1f; // Duration of the animation
@@ -24,19 +23,35 @@ namespace Project.Weapon
 
         private void Awake()
         {
-            if(player_Movement == null || player_Jump == null)
+            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+            fireAnimTransform = GetComponentInParent<Transform>();
+            animator = GetComponent<Animator>();
+            weapon_Main = GetComponent<Weapon_Main>();
+            
+            if (playerObject != null)
+            {
+                player_Movement = playerObject.GetComponent<Player_Movement>();
+                player_Jump = playerObject.GetComponent<Player_Jump>();
+            }
+            else
+            {
+                Debug.Log("player_Movement cannot be found, make sure the player is tagged as Player!!");
+            }
+
+            //Assign Dependents
+            if (player_Movement == null || player_Jump == null)
             {
                 Debug.LogWarning("Please attach Player_Movement & Player_Jump components to " + name + "!");
             }
 
-            animator = GetComponent<Animator>();
-            weapon_Main = GetComponent<Weapon_Main>();
-
             weapon_Main.OnFire += WeaponFireAnimation; // Part of Depricated Fire Animation
 
             // The original local position and rotation
+            originalLocalPosition = Vector3.zero;
+            originalLocalRotation = new Quaternion(0, 0, 0, 0);
             originalLocalPosition = fireAnimTransform.localPosition;
             originalLocalRotation = fireAnimTransform.localRotation;
+
         }
 
         private void OnDestroy()

@@ -7,12 +7,6 @@ public class Weapon_SCR : ScriptableObject
 {
     [Header("Type")]
     public string weaponName;
-    public enum WeaponType
-    {
-        primary,
-        secondary,
-        special
-    }
     public WeaponType weaponType;
     public GameObject weaponPrefab;
     [Header("Fire Attributes")]

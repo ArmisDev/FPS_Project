@@ -6,7 +6,7 @@ namespace Project.Weapon
     [RequireComponent(typeof(Weapon_Main))]
     public class Weapon_Recoil : MonoBehaviour
     {
-        [SerializeField] private GameObject recoilMover;
+        private GameObject recoilMover;
         [SerializeField] private float setbackForce = 1f; // The force to return to the start rotation
         [SerializeField] private float recoveryRate = 1f; // The speed at which the weapon recovers from recoil
         private Weapon_Main weapon_Main;
@@ -15,6 +15,7 @@ namespace Project.Weapon
 
         private void Awake()
         {
+            recoilMover = GameObject.FindGameObjectWithTag("RecoilMover");
             weapon_Main = GetComponent<Weapon_Main>();
             if (weapon_Main != null)
             {
@@ -57,21 +58,32 @@ namespace Project.Weapon
 
         private IEnumerator ResetWeaponRotation()
         {
-            // Wait for a short delay before starting the recovery
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.1f); // Wait before starting recovery
 
-            // Use a local variable to control the lerp progress
-            float recoverProgress = 0f;
+            float recoverProgress = 0.01f; // Start from a small positive value
 
             while (recoverProgress < 1f)
             {
                 recoverProgress += Time.deltaTime * recoveryRate;
+                recoverProgress = Mathf.Clamp(recoverProgress, 0.01f, 1f);
+
+                if (recoverProgress < Mathf.Epsilon) // Skip Lerp if recoverProgress is too small
+                {
+                    continue;
+                }
+
                 recoilMover.transform.localRotation = Quaternion.Lerp(recoilMover.transform.localRotation, startRotation, recoverProgress);
                 yield return null;
             }
 
-            // Ensure the final position is the start position
-            recoilMover.transform.localRotation = startRotation;
+            recoilMover.transform.localRotation = startRotation; // Final reset to ensure exact original rotation
+        }
+
+
+        private bool IsRotationValid(Quaternion rotation)
+        {
+            // Check for NaN values in the quaternion
+            return !float.IsNaN(rotation.x) && !float.IsNaN(rotation.y) && !float.IsNaN(rotation.z) && !float.IsNaN(rotation.w);
         }
     }
 }

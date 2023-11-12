@@ -10,9 +10,8 @@ namespace Project.Weapon
     [RequireComponent(typeof(PlayerInput))]
     public class Weapon_Main : MonoBehaviour
     {
-        [Header("Weapon Components")]
-        [SerializeField] private Player_Movement player_Movement;
-        [SerializeField] private GameObject firePoint;
+        private Player_Movement player_Movement;
+        private GameObject firePoint;
         private PlayerInput input;
 
         [Header("Weapon States")]
@@ -68,10 +67,16 @@ namespace Project.Weapon
 
         private void Awake()
         {
-            //Component checks
-            if(player_Movement == null)
+            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+            firePoint = GameObject.FindGameObjectWithTag("MainCamera");
+
+            if (playerObject != null)
             {
-                Debug.LogWarning("No player_Movement detected in " + name + "!!!");
+                player_Movement = playerObject.GetComponent<Player_Movement>();
+            }
+            else
+            {
+                Debug.Log("player_Movement cannot be found, make sure the player is tagged as Player!!");
             }
 
             //Weapon state check
