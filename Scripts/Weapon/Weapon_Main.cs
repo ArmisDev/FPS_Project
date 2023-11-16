@@ -11,26 +11,39 @@ namespace Project.Weapon
     public class Weapon_Main : MonoBehaviour
     {
         private Player_Movement player_Movement;
-        private GameObject firePoint;
+        [HideInInspector] public GameObject firePoint;
         private PlayerInput input;
 
         [Header("Weapon States")]
-        [SerializeField] private bool isOnlySemiAutomatic;
+        //[SerializeField] private bool isOnlySemiAutomatic;
         [SerializeField] private bool canSwitchFireModes;
         [HideInInspector] public bool weaponIsFiring;
         [HideInInspector] public bool weaponIsReloading;
+        private bool allowedToFire; //Set by operator in code (see ShotgunReset coroutine for example).
+                                    //Differs from canFire() because this is set by operator.
+        private bool isAiming;
+
+        //States
+        public enum WeaponFireModes
+        {
+            automatic,
+            semiautomatic,
+            shotgun
+        }
+
+        public WeaponFireModes currentFireMode;
+        private List<WeaponFireModes> fireModes = new List<WeaponFireModes>();
 
         [Header("Weapon Recoil")]
         public float recoilAmount; //Public so recoil script can access
 
         [Header("Weapon Fire")]
-        [SerializeField] private float range;
+        [HideInInspector] public float range;
         [SerializeField] private float damage;
         [SerializeField] private float fireRate;
-
-        //Private / Hidden Weapon Fire Variables
-        private RaycastHit raycastHit;
+        //public RaycastHit raycastHit;
         [HideInInspector] public float timeSinceFire;
+        public LayerMask rayExclusionLayer;
 
         [Header("Weapon Ammo")]
         [SerializeField] private float reloadTime;
@@ -38,28 +51,28 @@ namespace Project.Weapon
         [SerializeField] private float maxAmmo;
         private Coroutine reloadCoroutine;
 
+        [Header("Aim In")]
+        [SerializeField] private Vector3 desiredPos;
+        [SerializeField] private Vector3 desiredRotation;
+        [SerializeField] private float aimInAccel;
+        private Transform aimInTransform;
+        private Vector3 initPos;
+        private Vector3 initRotation;
+        public float aimInIncrement;
+
         [Header("Input Logic")]
-        [SerializeField] private float semiAutoFireThreshold; // The maximum amount of time allowed after the last shot before setting "weaponIsFiring" to false.
-        private float semiAutoFireTolerance; // Tolerence on when isFiring should be set to false
+        [SerializeField] private float recoveryTimeThreshold; // The maximum amount of time allowed after the last shot before setting "weaponIsFiring" to false.
+        private float recoveryTimeTolerance; // Tolerence on when isFiring should be set to false
         private InputAction fireSemi;
         private InputAction fireAuto;
         private InputAction reload;
         private InputAction fireModeSwitch;
+        private InputAction aimIn;
 
         //Private New Float Values
         [HideInInspector] public float newFireAuto;
         [HideInInspector] public float newFireSemi;
         [HideInInspector] public float newFireModeSwitch;
-
-        //States
-        public enum WeaponFireModes
-        {
-            automatic,
-            semiautomatic
-        }
-
-        [HideInInspector] public WeaponFireModes currentFireMode;
-        private List<WeaponFireModes> fireModes = new List<WeaponFireModes>();
 
         //Event
         public event Action OnFire;
@@ -79,28 +92,32 @@ namespace Project.Weapon
                 Debug.Log("player_Movement cannot be found, make sure the player is tagged as Player!!");
             }
 
-            //Weapon state check
-            if (isOnlySemiAutomatic)
-            {
-                canSwitchFireModes = false;
-                currentFireMode = WeaponFireModes.semiautomatic;
-            }
-            else currentFireMode = WeaponFireModes.automatic;
-
             //Input Assignment
             input = GetComponent<PlayerInput>();
             fireSemi = input.actions["Fire_Semi"];
             fireAuto = input.actions["Fire_Auto"];
             reload = input.actions["Reload"];
             fireModeSwitch = input.actions["FireModeSwitch"];
+            aimIn = input.actions["AimIn"];
 
             //Add Firemodes to list
             fireModes.Add(WeaponFireModes.automatic);
             fireModes.Add(WeaponFireModes.semiautomatic);
 
-            semiAutoFireTolerance = semiAutoFireThreshold; //Ensures that the weapon can fire at runtime.
+            recoveryTimeTolerance = recoveryTimeThreshold; //Ensures that the weapon can fire at runtime.
+
+            //Find and set components
+            GameObject aimInObj = GameObject.FindGameObjectWithTag("ObjectHolder");
+            aimInTransform = aimInObj.transform;
+            initPos = aimInTransform.localPosition;
+            initRotation = aimInTransform.localEulerAngles;
+
+            //Make sure we are initially allowed to fire
+            allowedToFire = true;
         }
 
+        #region - Fire Logic -
+        //Decided by current weapon aspects. Not set by operator
         public bool CanFire()
         {
             return ammoCount > 0;
@@ -108,15 +125,49 @@ namespace Project.Weapon
 
         public void WeaponFire()
         {
-            Physics.Raycast(firePoint.transform.position, firePoint.transform.forward, out raycastHit, range);
+            Physics.Raycast(firePoint.transform.position, firePoint.transform.forward, out RaycastHit hit, range, ~rayExclusionLayer);
+            Debug.Log(hit.collider.name);
+            Debug.DrawRay(firePoint.transform.position, firePoint.transform.forward * range, Color.green, 1f);
             weaponIsFiring = true;
             timeSinceFire = 0;
             ammoCount--;
 
-            //FX & Events
+            //FX & Events=
             OnFire?.Invoke();
+
+            if (hit.collider == null) return;
+            HitRigidBodyCheck(hit);
         }
 
+        public void ShotgunWeaponFire()
+        {
+            weaponIsFiring = true;
+            timeSinceFire = 0;
+            ammoCount--;
+
+            OnFire?.Invoke(); //Additional fire logic is handled by Weapon_ShotgunFire on OnFire event.
+        }
+
+        IEnumerator ShotGunReset()
+        {
+            weaponIsFiring = false;
+            allowedToFire = false;
+            yield return new WaitForSeconds(recoveryTimeThreshold);
+            allowedToFire = true;
+        }
+
+        //Rigidbody Check for semi and auto weapons
+        public void HitRigidBodyCheck(RaycastHit hit)
+        {
+            hit.collider.TryGetComponent(out Rigidbody objectRigidbody);
+            if (objectRigidbody != null)
+            {
+                hit.rigidbody.AddForce(-hit.normal * damage, ForceMode.Impulse);
+            }
+        }
+        #endregion
+
+        #region - Reload Logic -
         void ReloadWeapon()
         {
             if (reload.ReadValue<float>() > 0 && !weaponIsFiring && !weaponIsReloading)
@@ -135,7 +186,6 @@ namespace Project.Weapon
                 StopCoroutine(reloadCoroutine);
                 reloadCoroutine = null;
                 weaponIsReloading = false;
-                // Additional cleanup if necessary
             }
         }
 
@@ -149,9 +199,65 @@ namespace Project.Weapon
             weaponIsReloading = false;
             reloadCoroutine = null;
         }
+        #endregion
+
+        #region - Aim In Logic -
+        void AimInandOutLogic()
+        {
+            float aimInputValue = aimIn.ReadValue<float>();
+            bool isAimingInput = aimInputValue > 0;
+
+            if (isAimingInput && !player_Movement.isRunning)
+            {
+                if (!isAiming)
+                {
+                    // Reset increment when starting to aim in
+                    aimInIncrement = 0;
+                }
+
+                aimInIncrement += Time.deltaTime * aimInAccel;
+                aimInIncrement = Mathf.Clamp(aimInIncrement, 0, 1); // Clamp to ensure it stays within range
+
+                UpdateAimTransform(true);
+                isAiming = true;
+            }
+            else if (!isAimingInput && isAiming)
+            {
+                // Aim out logic
+                aimInIncrement -= Time.deltaTime * aimInAccel;
+                aimInIncrement = Mathf.Clamp(aimInIncrement, 0, 1); // Clamp to ensure it stays within range
+
+                UpdateAimTransform(false);
+
+                // Check if the initial position is reached
+                if (aimInIncrement == 0)
+                {
+                    isAiming = false;
+                }
+            }
+            else if (aimInputValue == 0 && !isAiming)
+            {
+                // No aiming input and not currently aiming
+                aimInIncrement = 0;
+            }
+        }
+
+        void UpdateAimTransform(bool isAimingIn)
+        {
+            Vector3 targetPosition = isAimingIn ? desiredPos : initPos;
+            Vector3 targetRotation = isAimingIn ? desiredRotation : initRotation;
+
+            aimInTransform.localPosition = Vector3.Lerp(
+                aimInTransform.localPosition, targetPosition, aimInIncrement);
+
+            aimInTransform.localEulerAngles = Vector3.Lerp(
+                aimInTransform.localEulerAngles, targetRotation, aimInIncrement);
+        }
+        #endregion
 
         private void Update()
         {
+            AimInandOutLogic();
             CanFire(); //Always check if we can fire first
             timeSinceFire += Time.deltaTime; //Constantly update are timesincefire.
             ReloadWeapon();
@@ -161,6 +267,7 @@ namespace Project.Weapon
             newFireSemi = fireSemi.ReadValue<float>();
             newFireModeSwitch = fireModeSwitch.ReadValue<float>();
 
+            #region - Fire Logic Input/State Detection -
             //!!!Fire Logic!!!
             //Switch statements handles different firing logic depending on the current fire mode.
             //!!!Must be executed before fire mode change!!!
@@ -179,16 +286,16 @@ namespace Project.Weapon
                     }
                     break;
                 case WeaponFireModes.semiautomatic:
-                    if (fireSemi.WasPerformedThisFrame() && newFireSemi > 0 && CanFire() && !weaponIsReloading)
+                    if (fireSemi.WasPerformedThisFrame() && CanFire() && !weaponIsReloading)
                     {
                         WeaponFire();
-                        semiAutoFireTolerance = semiAutoFireThreshold; // Reset the timer
+                        recoveryTimeTolerance = recoveryTimeThreshold; // Reset the timer
                     }
                     else
                     {
-                        if (semiAutoFireTolerance > 0)
+                        if (recoveryTimeTolerance > 0)
                         {
-                            semiAutoFireTolerance -= Time.deltaTime; // Decrement the timer
+                            recoveryTimeTolerance -= Time.deltaTime; // Decrement the timer
                         }
                         else
                         {
@@ -196,9 +303,17 @@ namespace Project.Weapon
                         }
                     }
                     break;
+                case WeaponFireModes.shotgun:
+                    if(fireSemi.WasPerformedThisFrame() && CanFire() && allowedToFire && !weaponIsReloading)
+                    {
+                        ShotgunWeaponFire();
+                        StartCoroutine(ShotGunReset());
+                    }
+                    break;
             }
+            #endregion
 
-            //Firemode change
+            #region - FireMode Switch -
             if (canSwitchFireModes)
             {
                 if (!fireModeSwitch.WasPressedThisFrame()) return;
@@ -219,6 +334,7 @@ namespace Project.Weapon
                     }
                 }
             }
+            #endregion
         }
     }
 }

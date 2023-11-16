@@ -21,7 +21,7 @@ namespace Project.Weapon
         private GameObject[] weapon_Mains;
         private List<GameObject> weapons = new List<GameObject>();
         private Interaction_Main interaction_Main;
-        private float switchCooldown = 1f; // 0.5 seconds cooldown between switches
+        private float switchCooldown = .3f; // 0.5 seconds cooldown between switches
         private float lastSwitchTime = -1f; // Initialize to -1 to allow immediate switch at start
         public int currentInventorySize;
         [SerializeField] private Transform GunsTransform;
@@ -80,13 +80,18 @@ namespace Project.Weapon
             int weaponTypeCount = weapons.Count(weapon =>
             {
                 var pickupable = weapon.GetComponent<Weapon_Pickupable>();
-                return pickupable != null && pickupable.scriptableObject.weaponType == e.WeaponType;
+                bool scriptableObjectExists = pickupable?.scriptableObject != null;
+                string actualType = pickupable?.scriptableObject?.weaponType.ToString() ?? "null";
+                //Debug.Log($"Weapon: {weapon.name}, ScriptableObjectExists: {scriptableObjectExists}, IsTypeMatch: {scriptableObjectExists && pickupable.scriptableObject.weaponType == e.WeaponType}, ExpectedType: {e.WeaponType}, ActualType: {actualType}");
+                return scriptableObjectExists && pickupable.scriptableObject.weaponType == e.WeaponType;
             });
+
 
             switch (e.WeaponType)
             {
                 case WeaponType.primary:
                     if (weaponTypeCount >= maxPrimary) return;
+                    Debug.Log("e test");
                     break;
                 case WeaponType.secondary:
                     if (weaponTypeCount >= maxSecondary) return;
@@ -99,6 +104,9 @@ namespace Project.Weapon
             // Add the weapon to the inventory
             //currentWeapon.SetActive(false);
             GameObject weaponToAdd = Instantiate(e.Prefab, GunsTransform);
+            var pickupable = weaponToAdd.GetComponent<Weapon_Pickupable>();
+            //Debug.Log($"Instantiated Weapon: {weaponToAdd.name}, Has Pickupable: {pickupable != null}, ScriptableObject Exists: {pickupable?.scriptableObject != null}");
+
             //Makes sure that are weapon is hidden before it gets set to the proper transform values.
             weaponToAdd.SetActive(false);
             //Sets currentWeapon (which in this case, is now the old weapon) to be hidden
@@ -106,7 +114,7 @@ namespace Project.Weapon
             currentWeapon.SetActive(false);
             weapons.Add(weaponToAdd);
 
-            if(currentWeapon != weaponToAdd)
+            if (currentWeapon != weaponToAdd)
             {
                 currentWeapon = weaponToAdd;
                 weaponToAdd.SetActive(true);

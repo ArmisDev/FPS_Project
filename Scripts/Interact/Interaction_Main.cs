@@ -29,12 +29,15 @@ namespace Project.Interaction
 
         void GetWeaponData(RaycastHit hit)
         {
-            Weapon_Pickupable weaponDataComponent = hit.collider.gameObject.GetComponent<Weapon_Pickupable>();
+            //This format helps prevent against null cases. But, it can be simplified.
+            //You could also just directly cache the object reference, based on the assumption
+            //that if an object uses the WeaponPickup tag, it should house the Weapon_Pickupable class.
+            hit.collider.gameObject.TryGetComponent(out Weapon_Pickupable weaponDataComponent);
             if (weaponDataComponent != null)
             {
                 Weapon_SCR weaponData = weaponDataComponent.scriptableObject;
                 WeaponPickUpInteraction(weaponData.weaponPrefab, weaponData.weaponType, weaponData.weaponName);
-                weaponDataComponent.DestroyObject();
+                //weaponDataComponent.DestroyObject();
             }
         }
 
@@ -48,13 +51,13 @@ namespace Project.Interaction
         {
             if(Physics.Raycast(raycastFirePoint.transform.position, raycastFirePoint.transform.forward, out hit, raycastRange) && interactButton.WasPerformedThisFrame())
             {
-                Debug.Log("Input has been pressed");
                 switch (hit.collider.tag)
                 {
                     case "WeaponPickup":
                         GetWeaponData(hit);
                         break;
                 }
+
             }
         }
     }

@@ -9,12 +9,4 @@ public class Weapon_SCR : ScriptableObject
     public string weaponName;
     public WeaponType weaponType;
     public GameObject weaponPrefab;
-    [Header("Fire Attributes")]
-    public float range;
-    public float damage;
-    public float fireRate;
-    [Header("Reload Attributes")]
-    public float reloadTime;
-    public float ammoCount;
-    public float maxAmmo;
 }
