@@ -126,7 +126,6 @@ namespace Project.Weapon
         public void WeaponFire()
         {
             Physics.Raycast(firePoint.transform.position, firePoint.transform.forward, out RaycastHit hit, range, ~rayExclusionLayer);
-            Debug.Log(hit.collider.name);
             Debug.DrawRay(firePoint.transform.position, firePoint.transform.forward * range, Color.green, 1f);
             weaponIsFiring = true;
             timeSinceFire = 0;

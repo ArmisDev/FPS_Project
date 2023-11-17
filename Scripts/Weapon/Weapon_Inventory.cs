@@ -32,6 +32,11 @@ namespace Project.Weapon
         //Event
         private event Action OnWeaponSwitch;
 
+        // Count the number of each type of weapon in the inventory
+        int currentPrimaryCount = 0;
+        int currentSecondaryCount = 0;
+        int currentSpecialCount = 0;
+
         private void Awake()
         {
             //Grab inputs
@@ -64,7 +69,7 @@ namespace Project.Weapon
 
         private void OnDestroy()
         {
-            //interaction_Main.OnInteraction -= UpdateInventory;
+            interaction_Main.OnInteraction -= UpdateInventory;
         }
 
         private void UpdateInventory(object sender, InteractionEventArgs e)
@@ -76,50 +81,64 @@ namespace Project.Weapon
                 return;
             }
 
-            // Check weapon type limits
-            int weaponTypeCount = weapons.Count(weapon =>
-            {
-                var pickupable = weapon.GetComponent<Weapon_Pickupable>();
-                bool scriptableObjectExists = pickupable?.scriptableObject != null;
-                string actualType = pickupable?.scriptableObject?.weaponType.ToString() ?? "null";
-                //Debug.Log($"Weapon: {weapon.name}, ScriptableObjectExists: {scriptableObjectExists}, IsTypeMatch: {scriptableObjectExists && pickupable.scriptableObject.weaponType == e.WeaponType}, ExpectedType: {e.WeaponType}, ActualType: {actualType}");
-                return scriptableObjectExists && pickupable.scriptableObject.weaponType == e.WeaponType;
-            });
+            // Instantiate the new weapon but don't add it to the list yet
+            GameObject weaponToAdd = Instantiate(e.Prefab, GunsTransform);
+            weaponToAdd.SetActive(false);
 
 
+
+            //Adds to our local weapontype counter (above) so we can reference it later.
             switch (e.WeaponType)
             {
                 case WeaponType.primary:
-                    if (weaponTypeCount >= maxPrimary) return;
-                    Debug.Log("e test");
+                    currentPrimaryCount++;
                     break;
                 case WeaponType.secondary:
-                    if (weaponTypeCount >= maxSecondary) return;
+                    currentSecondaryCount++;
                     break;
                 case WeaponType.special:
-                    if (weaponTypeCount >= maxSpecial) return;
+                    currentSpecialCount++;
                     break;
             }
 
-            // Add the weapon to the inventory
-            //currentWeapon.SetActive(false);
-            GameObject weaponToAdd = Instantiate(e.Prefab, GunsTransform);
-            var pickupable = weaponToAdd.GetComponent<Weapon_Pickupable>();
-            //Debug.Log($"Instantiated Weapon: {weaponToAdd.name}, Has Pickupable: {pickupable != null}, ScriptableObject Exists: {pickupable?.scriptableObject != null}");
-
-            //Makes sure that are weapon is hidden before it gets set to the proper transform values.
-            weaponToAdd.SetActive(false);
-            //Sets currentWeapon (which in this case, is now the old weapon) to be hidden
-            //Then, sets the new weapon (AKA the weapon we just picked up) to be shown.
-            currentWeapon.SetActive(false);
-            weapons.Add(weaponToAdd);
-
-            if (currentWeapon != weaponToAdd)
+            Debug.Log(currentPrimaryCount);
+            // Check if adding the new weapon would exceed the type limits
+            switch (e.WeaponType)
             {
-                currentWeapon = weaponToAdd;
-                weaponToAdd.SetActive(true);
+                case WeaponType.primary:
+                    if (currentPrimaryCount > maxPrimary)
+                    {
+                        interaction_Main.DestroyObjectStateSet(false);
+                        Destroy(weaponToAdd); // Clean up the instantiated but unused weapon
+                        return;
+                    }
+                    break;
+                case WeaponType.secondary:
+                    if (currentSecondaryCount > maxSecondary)
+                    {
+                        interaction_Main.DestroyObjectStateSet(false);
+                        Destroy(weaponToAdd);
+                        return;
+                    }
+                    break;
+                case WeaponType.special:
+                    if (currentSpecialCount > maxSpecial)
+                    {
+                        interaction_Main.DestroyObjectStateSet(false);
+                        Destroy(weaponToAdd);
+                        return;
+                    }
+                    break;
             }
+
+            // Now add the new weapon to the inventory
+            weapons.Add(weaponToAdd);
+            currentWeapon.SetActive(false);
+            currentWeapon = weaponToAdd;
+            weaponToAdd.SetActive(true);
+            interaction_Main.DestroyObjectStateSet(true);
         }
+
 
         private void SwitchWeapon(int index)
         {

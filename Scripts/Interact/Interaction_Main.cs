@@ -16,8 +16,13 @@ namespace Project.Interaction
         private PlayerInput playerInput;
         private InputAction interactButton;
 
+        //Weapon
+        Weapon_Pickupable weapon_Pickupable;
+        private bool destroyObject;
+
         private void TriggerInteraction(GameObject prefab, WeaponType weaponType, string weaponName)
         {
+            Debug.Log(weaponType);
             OnInteraction?.Invoke(this, new InteractionEventArgs(prefab, weaponType, weaponName));
         }
 
@@ -36,17 +41,19 @@ namespace Project.Interaction
             if (weaponDataComponent != null)
             {
                 Weapon_SCR weaponData = weaponDataComponent.scriptableObject;
-                WeaponPickUpInteraction(weaponData.weaponPrefab, weaponData.weaponType, weaponData.weaponName);
-                //weaponDataComponent.DestroyObject();
+                TriggerInteraction(weaponData.weaponPrefab, weaponData.weaponType, weaponData.weaponName);
+                if(destroyObject)
+                {
+                    weaponDataComponent.DestroyObject();
+                }
             }
         }
 
-        void WeaponPickUpInteraction(GameObject weaponPrefab, WeaponType weaponType, string weaponName)
+        public void DestroyObjectStateSet(bool state)
         {
-            TriggerInteraction(weaponPrefab, weaponType, weaponName);
+            destroyObject = state;
         }
 
-        // Update is called once per frame
         void Update()
         {
             if(Physics.Raycast(raycastFirePoint.transform.position, raycastFirePoint.transform.forward, out hit, raycastRange) && interactButton.WasPerformedThisFrame())
