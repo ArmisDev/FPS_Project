@@ -84,7 +84,7 @@ namespace Project.Weapon
 
         //void SpawnHitDecal()
         //{
-        //    //Vector3 hitPos = weapon_Main.raycastHit.normal;
+        //    Vector3 hitPos = weapon_Main.raycastHit.normal;
         //    Vector3 distanceFromObj = weapon_Main.raycastHit.normal - weapon_Main.raycastHit.transform.position;
         //    Debug.Log(distanceFromObj);
         //    Vector3 offset = weapon_Main.raycastHit.point * 0.01f;

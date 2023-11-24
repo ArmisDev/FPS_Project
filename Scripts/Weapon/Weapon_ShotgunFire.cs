@@ -43,6 +43,7 @@ namespace Project.Weapon
                 Physics.Raycast(weaponMain.firePoint.transform.position, f_branch - weaponMain.firePoint.transform.position, out RaycastHit hit, weaponMain.range, ~weaponMain.rayExclusionLayer);
                 Debug.DrawRay(weaponMain.firePoint.transform.position, f_branch - weaponMain.firePoint.transform.position, Color.green, 1f);
 
+                if (hit.collider == null) return;
                 weaponMain.HitRigidBodyCheck(hit);
             }
         }

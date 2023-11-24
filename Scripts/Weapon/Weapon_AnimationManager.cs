@@ -21,6 +21,11 @@ namespace Project.Weapon
         private Vector3 originalLocalPosition;
         private Quaternion originalLocalRotation;
 
+        //Falling related variables
+        public float fallTime;
+        float fallThreshold = 0.2f;
+        bool shouldPlayFallAnim;
+
         private void Awake()
         {
             GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
@@ -77,7 +82,35 @@ namespace Project.Weapon
             animator.SetBool("PlayerCanJump", player_Jump.playerCanJump);
             animator.SetBool("PlayerHasJumped", player_Jump.playerHasJumped);
             animator.SetBool("PlayerHasLanded", player_Jump.playerHasLanded);
-            animator.SetBool("PlayerIsFalling", player_Jump.playerIsFalling);
+            //Falling is handled in a different method due to there being different ways in which a player can fall
+            //This means that it requires more specification
+        }
+
+        void FallingAnimation()
+        {
+            switch(player_Movement.characterController.isGrounded)
+            {
+                case true:
+                    fallTime = 0;
+                    break;
+                case false:
+                    fallTime += Time.deltaTime;
+                    break;
+            }
+
+            //In animator there is a constraint that we cant go directly falling animation if we jumped.
+            //Doing it this way ensures that when we jump the falling animation will play as normal, but if
+            //we are just falling then we must excede our threshold.
+            if (fallTime > fallThreshold || player_Jump.playerHasJumped)
+            {
+                shouldPlayFallAnim = true;
+                animator.SetBool("PlayerIsFalling", player_Jump.playerIsFalling);
+            }
+            else
+            {
+                shouldPlayFallAnim = false;
+                animator.SetBool("PlayerIsFalling", false);
+            }
         }
 
         void CrouchAnimation()
@@ -160,6 +193,7 @@ namespace Project.Weapon
             }
 
             JumpAnimation();
+            FallingAnimation();
             CrouchAnimation();
         }
     }
