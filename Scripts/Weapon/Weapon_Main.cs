@@ -19,8 +19,8 @@ namespace Project.Weapon
         [SerializeField] private bool canSwitchFireModes;
         [HideInInspector] public bool weaponIsFiring;
         [HideInInspector] public bool weaponIsReloading;
-        private bool allowedToFire; //Set by operator in code (see ShotgunReset coroutine for example).
-                                    //Differs from canFire() because this is set by operator.
+        [HideInInspector] public bool allowedToFire; //Set by operator in code (see ShotgunReset coroutine for example).
+                                                    //Differs from canFire() because this is set by operator.
         private bool isAiming;
 
         //States
@@ -47,8 +47,8 @@ namespace Project.Weapon
 
         [Header("Weapon Ammo")]
         [SerializeField] private float reloadTime;
-        public float ammoCount;
-        [SerializeField] private float maxAmmo;
+        public int ammoCount;
+        public int maxAmmo;
         private Coroutine reloadCoroutine;
 
         [Header("Aim In")]
@@ -61,7 +61,7 @@ namespace Project.Weapon
         public float aimInIncrement;
 
         [Header("Input Logic")]
-        [SerializeField] private float recoveryTimeThreshold; // The maximum amount of time allowed after the last shot before setting "weaponIsFiring" to false.
+        [HideInInspector] public float recoveryTimeThreshold; // The maximum amount of time allowed after the last shot before setting "weaponIsFiring" to false.
         private float recoveryTimeTolerance; // Tolerence on when isFiring should be set to false
         private InputAction fireSemi;
         private InputAction fireAuto;
@@ -129,10 +129,11 @@ namespace Project.Weapon
             Debug.DrawRay(firePoint.transform.position, firePoint.transform.forward * range, Color.green, 1f);
             weaponIsFiring = true;
             timeSinceFire = 0;
-            ammoCount--;
 
             //FX & Events=
             OnFire?.Invoke();
+            ammoCount--; //We want to decrease ammo after fire event has been invoked.
+                         //This ensures that if we want to do something when our weapon has one round in it, that one round doesn't get removed before the event call.
 
             if (hit.collider == null) return;
             HitRigidBodyCheck(hit);
@@ -141,18 +142,20 @@ namespace Project.Weapon
         public void ShotgunWeaponFire()
         {
             weaponIsFiring = true;
-            timeSinceFire = 0;
-            ammoCount--;
+            timeSinceFire = 0; //This should be called before Event!
 
             OnFire?.Invoke(); //Additional fire logic is handled by Weapon_ShotgunFire on OnFire event.
+
+            ammoCount--; //We want to decrease ammo after fire event has been invoked.
+                         //This ensures that if we want to do something when our weapon has one round in it, that one round doesn't get removed before the event call.
         }
 
         IEnumerator ShotGunReset()
         {
-            weaponIsFiring = false;
             allowedToFire = false;
             yield return new WaitForSeconds(recoveryTimeThreshold);
             allowedToFire = true;
+            weaponIsFiring = false;
         }
 
         //Rigidbody Check for semi and auto weapons
@@ -169,12 +172,46 @@ namespace Project.Weapon
         #region - Reload Logic -
         void ReloadWeapon()
         {
-            if (reload.ReadValue<float>() > 0 && !weaponIsFiring && !weaponIsReloading)
+            switch(currentFireMode)
             {
-                if (reloadCoroutine != null)
-                    StopCoroutine(reloadCoroutine);
+                case WeaponFireModes.automatic:
+                    if (reload.ReadValue<float>() > 0 && !weaponIsFiring && !weaponIsReloading)
+                    {
+                        if (reloadCoroutine != null)
+                            StopCoroutine(reloadCoroutine);
 
-                reloadCoroutine = StartCoroutine(ReloadCoroutine());
+                        reloadCoroutine = StartCoroutine(ReloadCoroutine());
+                    }
+                    break;
+                case WeaponFireModes.semiautomatic:
+                    if (reload.ReadValue<float>() > 0 && !weaponIsFiring && !weaponIsReloading)
+                    {
+                        if (reloadCoroutine != null)
+                            StopCoroutine(reloadCoroutine);
+
+                        reloadCoroutine = StartCoroutine(ReloadCoroutine());
+                    }
+                    break;
+                case WeaponFireModes.shotgun:
+
+                    if (reload.ReadValue<float>() > 0 && !weaponIsFiring && !weaponIsReloading)
+                    {
+                        if (ammoCount == maxAmmo) return;
+                        weaponIsReloading = true;
+                    }
+                    
+                    else if(weaponIsReloading && ammoCount == maxAmmo)
+                    {
+                        weaponIsReloading = false;
+                        allowedToFire = true;
+                    }
+
+                    while (weaponIsReloading)
+                    {
+                        allowedToFire = false;
+                        break;
+                    }
+                    break;
             }
         }
 

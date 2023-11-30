@@ -7,7 +7,6 @@ namespace Project.Weapon
     public class Weapon_Recoil : MonoBehaviour
     {
         private GameObject recoilMover;
-        [SerializeField] private float setbackForce = 1f; // The force to return to the start rotation
         [SerializeField] private float recoveryRate = 1f; // The speed at which the weapon recovers from recoil
         private Weapon_Main weapon_Main;
         private Quaternion startRotation;
@@ -80,10 +79,10 @@ namespace Project.Weapon
         }
 
 
-        private bool IsRotationValid(Quaternion rotation)
-        {
-            // Check for NaN values in the quaternion
-            return !float.IsNaN(rotation.x) && !float.IsNaN(rotation.y) && !float.IsNaN(rotation.z) && !float.IsNaN(rotation.w);
-        }
+        //private bool IsRotationValid(Quaternion rotation)
+        //{
+        //    // Check for NaN values in the quaternion
+        //    return !float.IsNaN(rotation.x) && !float.IsNaN(rotation.y) && !float.IsNaN(rotation.z) && !float.IsNaN(rotation.w);
+        //}
     }
 }

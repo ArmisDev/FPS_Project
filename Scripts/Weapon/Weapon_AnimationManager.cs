@@ -4,7 +4,7 @@ using Project.Player;
 
 namespace Project.Weapon
 {
-    [RequireComponent(typeof(Weapon_Main), typeof(Animator))]
+    [RequireComponent(typeof(Weapon_Main), typeof(Animator), typeof(AudioSource))]
     public class Weapon_AnimationManager : MonoBehaviour
     {
         private Player_Movement player_Movement;
@@ -24,10 +24,15 @@ namespace Project.Weapon
         //Falling related variables
         public float fallTime;
         float fallThreshold = 0.2f;
-        bool shouldPlayFallAnim;
+
+        //Shotgun Unique
+        private AudioSource audioSource;
+        [SerializeField] private AudioClip loadShellClip;
+        [SerializeField] private AudioClip pumpRound;
 
         private void Awake()
         {
+            audioSource = GetComponent<AudioSource>();
             GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
             fireAnimTransform = GetComponentInParent<Transform>();
             animator = GetComponent<Animator>();
@@ -103,12 +108,10 @@ namespace Project.Weapon
             //we are just falling then we must excede our threshold.
             if (fallTime > fallThreshold || player_Jump.playerHasJumped)
             {
-                shouldPlayFallAnim = true;
                 animator.SetBool("PlayerIsFalling", player_Jump.playerIsFalling);
             }
             else
             {
-                shouldPlayFallAnim = false;
                 animator.SetBool("PlayerIsFalling", false);
             }
         }
@@ -118,9 +121,34 @@ namespace Project.Weapon
             animator.SetBool("PlayerIsCrouching", player_Movement.isCrouching);
         }
 
+
+        //Ass logic for shotgun
         void ReloadAnimation()
         {
             animator.SetBool("Reloading", weapon_Main.weaponIsReloading);
+        }
+
+        //Called via Animation Event
+        void PlayPumpRoundClip()
+        {
+            PlayAudio(pumpRound);
+        }
+
+        //Called via Animation Event
+        void PlayLoadRoundClip()
+        {
+            PlayAudio(loadShellClip);
+        }
+
+        void PlayAudio(AudioClip audioClip)
+        {
+            audioSource.PlayOneShot(audioClip);
+        }
+
+        //Called via Animation Event
+        void AddShellForShotgun()
+        {
+            weapon_Main.ammoCount++;
         }
 
         #region - Procedural Fire Animation -
@@ -172,14 +200,68 @@ namespace Project.Weapon
 
         void FireAnimationTrigger()
         {
-            animator.SetBool("WeaponIsAuto", weapon_Main.currentFireMode == Weapon_Main.WeaponFireModes.automatic);
-            animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
-            animator.SetBool("SemiAutoHasInput", weapon_Main.newFireSemi > 0);
-            animator.SetFloat("AmmoCount", weapon_Main.ammoCount);
+            //switch(weapon_Main.currentFireMode)
+            //{
+            //    case Weapon_Main.WeaponFireModes.automatic:
+            //        animator.SetBool("WeaponIsAuto", weapon_Main.currentFireMode == Weapon_Main.WeaponFireModes.automatic);
+            //        animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+            //        animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
+            //        break;
+            //    case Weapon_Main.WeaponFireModes.semiautomatic:
+            //        animator.SetBool("SemiAutoHasInput", weapon_Main.newFireSemi > 0);
+            //        animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+            //        animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
+            //        break;
+            //    case Weapon_Main.WeaponFireModes.shotgun:
+            //        animator.SetBool("SemiAutoHasInput", weapon_Main.newFireSemi > 0);
+            //        animator.SetFloat("timeSinceFire", weapon_Main.timeSinceFire);
+            //        animator.SetBool("CanFire", weapon_Main.allowedToFire);
+            //        animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+            //        animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
+            //        break;
+
+            //}
+            //if(weapon_Main.currentFireMode == Weapon_Main.WeaponFireModes.shotgun)
+            //{
+            //    animator.SetBool("CanFire", weapon_Main.allowedToFire);
+            //}
+            //animator.SetBool("WeaponIsAuto", weapon_Main.currentFireMode == Weapon_Main.WeaponFireModes.automatic);
+            //animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+            //animator.SetBool("SemiAutoHasInput", weapon_Main.newFireSemi > 0);
+            //animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
         }
 
         private void Update()
         {
+            switch (weapon_Main.currentFireMode)
+            {
+                case Weapon_Main.WeaponFireModes.automatic:
+                    animator.SetBool("WeaponIsAuto", weapon_Main.currentFireMode == Weapon_Main.WeaponFireModes.automatic);
+                    animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+                    animator.SetFloat("timeSinceFire", weapon_Main.timeSinceFire);
+                    animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
+                    break;
+                case Weapon_Main.WeaponFireModes.semiautomatic:
+                    animator.SetBool("SemiAutoHasInput", weapon_Main.newFireSemi > 0);
+                    animator.SetFloat("timeSinceFire", weapon_Main.timeSinceFire);
+                    animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+                    animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
+                    break;
+                case Weapon_Main.WeaponFireModes.shotgun:
+                    if (weapon_Main.ammoCount == weapon_Main.maxAmmo - 1)
+                    {
+                        animator.SetBool("ReachedMaxAmmo", true);
+                    }
+                    else animator.SetBool("ReachedMaxAmmo", false);
+
+                    animator.SetBool("SemiAutoHasInput", weapon_Main.newFireSemi > 0);
+                    animator.SetFloat("timeSinceFire", weapon_Main.timeSinceFire);
+                    animator.SetBool("CanFire", weapon_Main.allowedToFire);
+                    animator.SetBool("WeaponIsFired", weapon_Main.weaponIsFiring);
+                    animator.SetInteger("AmmoCount", weapon_Main.ammoCount);
+                    break;
+
+            }
             //Debug.Log(isAnimating);
             FireAnimationTrigger();
             ReloadAnimation();

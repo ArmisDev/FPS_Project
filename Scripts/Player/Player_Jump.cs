@@ -14,9 +14,11 @@ namespace Project.Player
         [HideInInspector] public bool playerHasLanded;
         [HideInInspector] public bool playerIsFalling;
         private float airTimer;
-        public float nextInputTimer;
+        private float nextInputTimer;
+        public float ceilingCheckLength;
         [SerializeField] private float nextInputTimerThreshold;
         [HideInInspector] public bool playerCanJump;
+        [SerializeField] private LayerMask ignoreLayer;
 
         //Components
         Player_Movement playerMovement;
@@ -28,6 +30,7 @@ namespace Project.Player
             playerMovement = GetComponent<Player_Movement>();
             playerInput = GetComponent<PlayerInput>();
             jumpAction = playerInput.actions["Jump"];
+            ceilingCheckLength = jumpForce / Physics.gravity.magnitude;
         }
 
         void OnEnable() => playerMovement.JumpEvent += JumpEvent;
@@ -44,6 +47,17 @@ namespace Project.Player
                 playerHasJumped = true;
                 playerCanJump = false;
                 playerMovement.playerVelocity.y += jumpForce;
+            }
+        }
+
+        void CeilingCheck()
+        {
+            if(Physics.Raycast(transform.position + Vector3.up, Vector3.up, out RaycastHit hit, ceilingCheckLength, ~ignoreLayer))
+            {
+                if(hit.collider != null)
+                {
+                    playerCanJump = false; //Gets reset to true following conditions below.
+                }
             }
         }
 
@@ -80,6 +94,7 @@ namespace Project.Player
 
         private void Update()
         {
+            CeilingCheck();
             LandDetection();
 
             if(!playerCanJump)

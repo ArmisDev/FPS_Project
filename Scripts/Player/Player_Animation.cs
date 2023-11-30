@@ -6,18 +6,20 @@ namespace Project.Player
     public class Player_Animation : MonoBehaviour
     {
         [Header("Components")]
+        [SerializeField] private Camera playerCamera;
         [SerializeField] private Animator animator;
-        [SerializeField] private Camera camera;
         private Player_Movement player_Movement;
 
-        [Header("FOV Parameters")]
+        [Header("Sprint FOV Parameters")]
         [SerializeField] private float targetFOV;
         [SerializeField] private float fovAccelerate;
         private float initalFOV;
+        private float resetTheshold = 80.05f; //Used in the Approximatley Method to say any value below are reset threshold
+                                     //Is the same as our initialFOV.
 
         private void Awake()
         {
-            initalFOV = camera.fieldOfView;
+            initalFOV = playerCamera.fieldOfView;
             player_Movement = GetComponent<Player_Movement>();
         }
 
@@ -30,21 +32,29 @@ namespace Project.Player
         private void CameraFOVChange()
         {
             var accelFactor = fovAccelerate * Time.deltaTime; //float to lerp with
-            var currentFOV = camera.fieldOfView;
+            var currentFOV = playerCamera.fieldOfView;
+
+            if (!player_Movement.isRunning && playerCamera.fieldOfView == initalFOV) return;
+
             //If we are running and not at the target FOV, then adjust the FOV
-            if(player_Movement.isRunning && camera.fieldOfView <= targetFOV)
+            if (player_Movement.isRunning && playerCamera.fieldOfView <= targetFOV)
             {
-                camera.fieldOfView = Mathf.Lerp(currentFOV, targetFOV, accelFactor);
+                playerCamera.fieldOfView = Mathf.Lerp(currentFOV, targetFOV, accelFactor);
             }
             //If we arent runing and the FOV is greater or equal to the target FOV, then lerp back.
-            else if(!player_Movement.isRunning)
+            else if (!player_Movement.isRunning)
             {
-                camera.fieldOfView = Mathf.Lerp(currentFOV, initalFOV, accelFactor);
+                playerCamera.fieldOfView = Mathf.Lerp(currentFOV, initalFOV, accelFactor);
             }
         }
 
         private void Update()
         {
+            if(playerCamera.fieldOfView <= resetTheshold)
+            {
+                playerCamera.fieldOfView = initalFOV;
+            }
+
             HeadBob();
             CameraFOVChange();
         }

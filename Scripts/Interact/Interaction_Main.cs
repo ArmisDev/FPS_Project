@@ -12,7 +12,7 @@ namespace Project.Interaction
         [SerializeField] private Transform raycastFirePoint;
         [SerializeField] private float raycastRange;
         private RaycastHit hit;
-        public event EventHandler<InteractionEventArgs> OnInteraction;
+        public event EventHandler<WeaponInteractionEventArgs> OnInteraction;
         private PlayerInput playerInput;
         private InputAction interactButton;
 
@@ -20,10 +20,13 @@ namespace Project.Interaction
         Weapon_Pickupable weapon_Pickupable;
         private bool destroyObject;
 
+        //Interact Event
+        public event Action OnInteract;
+
         private void TriggerInteraction(GameObject prefab, WeaponType weaponType, string weaponName)
         {
             Debug.Log(weaponType);
-            OnInteraction?.Invoke(this, new InteractionEventArgs(prefab, weaponType, weaponName));
+            OnInteraction?.Invoke(this, new WeaponInteractionEventArgs(prefab, weaponType, weaponName));
         }
 
         private void Awake()
@@ -63,8 +66,14 @@ namespace Project.Interaction
                     case "WeaponPickup":
                         GetWeaponData(hit);
                         break;
+                    case "Interactable":
+                        hit.collider.TryGetComponent(out InteractableObject interactableObject);
+                        if(interactableObject != null)
+                        {
+                            interactableObject.CallInteractionEvent();
+                        }
+                        break;
                 }
-
             }
         }
     }

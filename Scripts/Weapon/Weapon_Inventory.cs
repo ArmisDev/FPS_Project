@@ -72,7 +72,7 @@ namespace Project.Weapon
             interaction_Main.OnInteraction -= UpdateInventory;
         }
 
-        private void UpdateInventory(object sender, InteractionEventArgs e)
+        private void UpdateInventory(object sender, WeaponInteractionEventArgs e)
         {
             // Check if inventory is full
             if (weapons.Count >= inventorySize)

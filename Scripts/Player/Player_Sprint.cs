@@ -27,7 +27,7 @@ namespace Project.Player
         void RunEvent()
         {
             var sprintInput = sprintAction.ReadValue<float>();
-            if(sprintInput == 0)
+            if(sprintInput == 0 || playerMovement.isCrouching)
             {
                 playerMovement.isRunning = false;
                 return;
@@ -41,10 +41,16 @@ namespace Project.Player
              * Finally, we multiply our speedAdjuster by the multiplier value.
              */
             #endregion
-            playerMovement.isRunning = true;
+            
             var forwardMoveFactor = Mathf.Clamp01(Vector3.Dot(playerMovement.transform.forward, playerMovement.playerVelocity.normalized));
             var multiplier = Mathf.Lerp(1f, runMultiplier, forwardMoveFactor);
             playerMovement.speedAdjuster *= multiplier;
+
+            //This is really stupid
+            if(sprintInput > 0 && playerMovement.playerVelocity.magnitude > playerMovement.defaultSpeed)
+            {
+                playerMovement.isRunning = true;
+            }
         }
     }
 }

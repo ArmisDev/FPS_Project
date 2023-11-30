@@ -48,8 +48,12 @@ namespace Project.Player
         #region - State -
 
         //Bool States
-        [HideInInspector] public bool isCrouching;
+        public bool isCrouching;
         [HideInInspector] public bool isRunning;
+
+        //Character Height
+        private float characterHeight;
+        [HideInInspector] public float crouchHeight; //Value set by Player_Crouch
 
         //All movment states go here (ENSURE WALKING IS FIRST!)
         public enum State
@@ -120,6 +124,7 @@ namespace Project.Player
             }
 
             characterController = GetComponent<CharacterController>(); //Grabs Character Controller
+            characterHeight = characterController.height;
 
             //Get Input System & InputActions
             playerInput = GetComponent<PlayerInput>();
@@ -146,9 +151,10 @@ namespace Project.Player
              * Finally we return the input Vector
              */
             #endregion
+            
+            CrouchEvent?.Invoke();
             RunEvent?.Invoke();
             JumpEvent?.Invoke();
-            CrouchEvent?.Invoke();
 
             var moveInput = input_Move.ReadValue<Vector2>();
             var input = new Vector3();
@@ -170,11 +176,17 @@ namespace Project.Player
              * Finally, we use move the characterController by using our playerVelocity Vector.
              */
             #endregion
-            speedAdjuster = 1f;
+
+            if(!isCrouching || !isRunning)
+            {
+                speedAdjuster = 1;
+            }
+
             var input = GetMoveInput(defaultSpeed, true);
             var accelFactor = acceleration * Time.deltaTime;
             playerVelocity.x = Mathf.Lerp(playerVelocity.x, input.x, accelFactor);
             playerVelocity.z = Mathf.Lerp(playerVelocity.z, input.z, accelFactor);
+
             characterController.Move((playerVelocity) * Time.deltaTime);
         }
 
