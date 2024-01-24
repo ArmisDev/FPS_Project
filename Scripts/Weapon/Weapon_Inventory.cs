@@ -12,39 +12,47 @@ namespace Project.Weapon
     public class Weapon_Inventory : MonoBehaviour
     {
         [Header("Inventory Parameters")]
+        public Transform GunsTransform;
+        public Transform DropPosition;
+        public GameObject droppedWeaponsContainer;
         [SerializeField] private int inventorySize;
         [SerializeField] private int maxPrimary;
         [SerializeField] private int maxSecondary;
         [SerializeField] private int maxSpecial;
-        private GameObject currentWeapon;
-        private GameObject currentActiveWeapon;
-        private GameObject[] weapon_Mains;
-        private List<GameObject> weapons = new List<GameObject>();
+        [HideInInspector] public bool stopWeaponSwitch;
+
+        [Header("Ammo")]
+        //private Dictionary<string, AmmoData> savedAmmoData = new();
+        [HideInInspector] public int inventoryAmmo;
+
+        //Dropped Weapon Logic
+        public List<GameObject> droppedWeapons = new();
+
+        [HideInInspector] public GameObject currentWeapon;
+        private GameObject[] weapon_Mains;  // Array of weapons in the game
+        public List<GameObject> weapons = new();
+
         private Interaction_Main interaction_Main;
-        private float switchCooldown = .3f; // 0.5 seconds cooldown between switches
-        private float lastSwitchTime = -1f; // Initialize to -1 to allow immediate switch at start
-        public int currentInventorySize;
-        [SerializeField] private Transform GunsTransform;
-        //Input
+        private float switchCooldown = .3f;
+        private float lastSwitchTime = -1f;
+        [HideInInspector] public int currentInventorySize;
+
         private PlayerInput input;
         private InputAction weaponSwitch;
+        private InputAction dropWeapon;
 
-        //Event
         private event Action OnWeaponSwitch;
 
-        // Count the number of each type of weapon in the inventory
-        int currentPrimaryCount = 0;
-        int currentSecondaryCount = 0;
-        int currentSpecialCount = 0;
+        public int currentPrimaryCount = 0;
+        public int currentSecondaryCount = 0;
+        public int currentSpecialCount = 0;
 
         private void Awake()
         {
-            //Grab inputs
             input = GetComponent<PlayerInput>();
             weaponSwitch = input.actions["SwitchWeapons"];
+            dropWeapon = input.actions["DropWeapon"];
 
-            //Grab weapon mains for loop in start
-            //weapon_Mains = GetComponentsInChildren<Weapon_Main>();
             weapon_Mains = GameObject.FindGameObjectsWithTag("Weapon");
             interaction_Main = GetComponent<Interaction_Main>();
             interaction_Main.OnInteraction += UpdateInventory;
@@ -52,17 +60,15 @@ namespace Project.Weapon
 
         private void Start()
         {
-            //sets all the objects found in the array into a list
             foreach (GameObject weapon_Main in weapon_Mains)
             {
-                GameObject tempObj = weapon_Main.gameObject;
-                tempObj.gameObject.SetActive(false);
-                weapons.Add(tempObj);
+                weapon_Main.SetActive(false);
+                weapons.Add(weapon_Main);
             }
 
-            currentWeapon = weapon_Mains[0].gameObject;
-            if(currentWeapon != null)
+            if (weapons.Count > 0)
             {
+                currentWeapon = weapons[0];
                 currentWeapon.SetActive(true);
             }
         }
@@ -81,14 +87,112 @@ namespace Project.Weapon
                 return;
             }
 
-            // Instantiate the new weapon but don't add it to the list yet
+            // Check for weapon data like ammo
             GameObject weaponToAdd = Instantiate(e.Prefab, GunsTransform);
+            Weapon_Main weaponToAddMain = weaponToAdd.GetComponent<Weapon_Main>();
+            Weapon_Pickupable pickupableComponent = e.DroppableWeapon.GetComponent<Weapon_Pickupable>();
+            Weapon_Ammo ammoComponentToAdd = weaponToAdd.GetComponent<Weapon_Ammo>();
+
+            if (pickupableComponent != null && ammoComponentToAdd != null)
+            {
+                AmmoData savedAmmoData = pickupableComponent.GetAmmoData();
+                ammoComponentToAdd.SetAmmoData(savedAmmoData);
+            }
+
             weaponToAdd.SetActive(false);
 
+            #region - Limit Check -
+            // Increment the counter based on the weapon's type
+            IncrementWeaponCounter(e.WeaponType);
 
-
-            //Adds to our local weapontype counter (above) so we can reference it later.
+            // Check if adding the new weapon would exceed the type limits
+            bool exceedsLimit = false;
             switch (e.WeaponType)
+            {
+                case WeaponType.primary:
+                    if (currentPrimaryCount > maxPrimary)
+                    {
+                        exceedsLimit = true;
+                    }
+                    break;
+                case WeaponType.secondary:
+                    if (currentSecondaryCount > maxSecondary)
+                    {
+                        exceedsLimit = true;
+                    }
+                    break;
+                case WeaponType.special:
+                    if (currentSpecialCount > maxSpecial)
+                    {
+                        exceedsLimit = true;
+                    }
+                    break;
+            }
+
+            if (exceedsLimit)
+            {
+                Weapon_WeaponType weaponType = currentWeapon.GetComponent<Weapon_WeaponType>();
+                // Decrement the counter since we're not adding the weapon
+                DecrementWeaponCounter(weaponType.currentWeaponType);
+
+                interaction_Main.DestroyObjectStateSet(false); // Ensure we don't delete the pickupable weapon from the world
+                Destroy(weaponToAdd); // But we do delete it from our character/inventory
+                return;
+            }
+            #endregion
+
+            #region - Check for Previous Weapon -
+            //Grab the unique ID from the event args
+            string weaponToAddID = e.UniqueID;
+            //Weapon_Main weaponToAddMain = weaponToAdd.GetComponent<Weapon_Main>();
+
+            if (weaponToAddMain != null)
+            {
+                weaponToAddMain.weaponID = weaponToAddID;
+
+                // Find the dropped weapon with the same ID and handle it
+                GameObject objectToReparent = null;
+                foreach (GameObject droppedWeapon in droppedWeapons)
+                {
+                    Weapon_Main tempWeaponMain = droppedWeapon.GetComponent<Weapon_Main>();
+                    if (tempWeaponMain != null && tempWeaponMain.weaponID == weaponToAddID)
+                    {
+                        objectToReparent = droppedWeapon;
+                        break; // Found the matching weapon, no need to continue the loop
+                    }
+                }
+
+                if (objectToReparent != null)
+                {
+                    droppedWeapons.Remove(objectToReparent); // Remove from droppedWeapons list
+                    Destroy(objectToReparent); // Destroy the old dropped weapon
+                                               // Optionally, you can handle any state transfer here if needed
+                }
+            }
+            #endregion
+
+            //Assign the droppable weapon in the main class to that of the current pickup
+            //This ensures that it's unique ID remains the same
+            //As well as allowing us to instantiate a weapon in DropWeapon() that has data filled out
+            //Doping this ensures that we do not constantly generate different UniqueIDs when we go to pickup and drop weapons
+            //... I think :)
+            Weapon_Main currentWeaponMain = weaponToAdd.GetComponent<Weapon_Main>();
+            currentWeaponMain.dropableObject = e.DroppableWeapon;
+
+            // Add the new weapon to the inventory
+            weapons.Add(weaponToAdd);
+            currentWeapon.SetActive(false);
+            currentWeapon = weaponToAdd;
+            weaponToAdd.SetActive(true);
+            interaction_Main.DestroyObjectStateSet(true);
+
+            // Restore the state of the weapon
+            Weapon_Pickupable pickupable = weaponToAdd.GetComponent<Weapon_Pickupable>();
+        }
+
+        private void IncrementWeaponCounter(WeaponType type)
+        {
+            switch (type)
             {
                 case WeaponType.primary:
                     currentPrimaryCount++;
@@ -100,52 +204,152 @@ namespace Project.Weapon
                     currentSpecialCount++;
                     break;
             }
+        }
 
-            Debug.Log(currentPrimaryCount);
-            // Check if adding the new weapon would exceed the type limits
-            switch (e.WeaponType)
+        private void DecrementWeaponCounter(Weapon_WeaponType.WeaponType type)
+        {
+            switch (type)
             {
-                case WeaponType.primary:
-                    if (currentPrimaryCount > maxPrimary)
-                    {
-                        interaction_Main.DestroyObjectStateSet(false);
-                        Destroy(weaponToAdd); // Clean up the instantiated but unused weapon
-                        return;
-                    }
+                case Weapon_WeaponType.WeaponType.primary:
+                    currentPrimaryCount--;
                     break;
-                case WeaponType.secondary:
-                    if (currentSecondaryCount > maxSecondary)
-                    {
-                        interaction_Main.DestroyObjectStateSet(false);
-                        Destroy(weaponToAdd);
-                        return;
-                    }
+                case Weapon_WeaponType.WeaponType.secondary:
+                    currentSecondaryCount--;
                     break;
-                case WeaponType.special:
-                    if (currentSpecialCount > maxSpecial)
-                    {
-                        interaction_Main.DestroyObjectStateSet(false);
-                        Destroy(weaponToAdd);
-                        return;
-                    }
+                case Weapon_WeaponType.WeaponType.special:
+                    currentSpecialCount--;
                     break;
             }
+        }
 
-            // Now add the new weapon to the inventory
-            weapons.Add(weaponToAdd);
-            currentWeapon.SetActive(false);
-            currentWeapon = weaponToAdd;
-            weaponToAdd.SetActive(true);
-            interaction_Main.DestroyObjectStateSet(true);
+        private void DropWeapon()
+        {
+            #region - Description -
+            /*
+             * The goal of this look at are current weapon, update ammo variables on the pickup side of the weapon,
+             * move the weapon to the dropped weapons container, and finally move the position of the pickupable weapon
+             * to where the player is, simulating the experience of "dropping the weapon".
+             */
+            #endregion
+
+            if (dropWeapon.WasPerformedThisFrame() && weapons.Count > 0)
+            {
+                int currentIndex = weapons.IndexOf(currentWeapon);
+                if (currentWeapon.name == "No Weapon")
+                {
+                    Debug.Log("Cannot remove hands!");
+                    return;
+                }
+                if (currentIndex == -1)
+                {
+                    Debug.LogError("Current weapon not found in the inventory list.");
+                    return; // Current weapon not in the list
+                }
+
+                currentWeapon.SetActive(false);
+
+                Weapon_Ammo ammoComponent = currentWeapon.GetComponent<Weapon_Ammo>();
+                Weapon_Main mainWeaponData = currentWeapon.GetComponent<Weapon_Main>();
+                Weapon_Pickupable pickupableComponent = mainWeaponData.dropableObject.GetComponent<Weapon_Pickupable>();
+
+                if (ammoComponent != null && pickupableComponent != null)
+                {
+                    AmmoData currentAmmoData = ammoComponent.GetAmmoData();
+                    pickupableComponent.SetAmmoData(currentAmmoData);
+                }
+
+                // Update the counters based on the weapon type
+                Weapon_WeaponType weaponType = currentWeapon.GetComponent<Weapon_WeaponType>();
+                if (weaponType != null)
+                {
+                    DecrementWeaponCounter(weaponType.currentWeaponType);
+                }
+                else
+                {
+                    Debug.LogError("Weapon_WeaponType component not found on the dropped weapon.");
+                }
+
+                // Set the dropped weapon as a child of the 'Dropped Weapons' container
+                currentWeapon.transform.SetParent(droppedWeaponsContainer.transform);
+
+                // Spawn the pickupable version and set the original weapon reference
+                if (mainWeaponData.dropableObject != null)
+                {
+                    mainWeaponData.dropableObject.transform.localEulerAngles = Vector3.zero;
+
+                    GameObject camera = GameObject.FindGameObjectWithTag("MainCamera");
+
+                    // Define the distance you want the object to spawn in front of the camera
+                    float spawnDistance = 1.2f; // Adjust this value as needed for your game
+
+                    // Calculate the intended spawn position in front of the camera
+                    Vector3 intendedSpawnPosition = camera.transform.position + camera.transform.forward * spawnDistance;
+
+                    // Perform a raycast to check for collisions along the intended path
+                    if (Physics.Raycast(camera.transform.position, camera.transform.forward, out RaycastHit hit, spawnDistance))
+                    {
+                        // If a hit is detected, adjust the spawn position to just in front of the hit point to avoid spawning inside the wall
+                        intendedSpawnPosition = hit.point - camera.transform.forward * 0.1f; // Adjust this offset as necessary
+                    }
+
+                    // Set the position and rotation of the object
+                    mainWeaponData.dropableObject.transform.position = intendedSpawnPosition;
+                    // Optional: You might want to set the rotation of the object to match the camera or a certain orientation depending on your game
+
+                    // Activate the object
+                    mainWeaponData.dropableObject.SetActive(true);
+
+                    // Log the position for debugging purposes
+                    Debug.Log("Spawned Object at: " + intendedSpawnPosition);
+                }
+                else
+                {
+                    Debug.LogError("DropableObject reference is destroyed or null.");
+                }
+
+                if (!droppedWeapons.Contains(currentWeapon))
+                {
+                    droppedWeapons.Add(currentWeapon);
+                }
+
+                // Remove the current weapon from the inventory
+                weapons.Remove(currentWeapon);
+                currentInventorySize = weapons.Count; // Update inventory size
+
+                // Switch to the next weapon in the list
+                int nextWeaponIndex = (currentIndex >= weapons.Count) ? 0 : currentIndex;
+                SwitchWeapon(nextWeaponIndex);
+            }
         }
 
 
         private void SwitchWeapon(int index)
         {
-            // Disable the current weapon and stop the reload coroutine
-            if (currentWeapon.GetComponent<Weapon_Main>() != null)
+            if (index < 0 || index >= weapons.Count)
             {
-                currentWeapon.GetComponent<Weapon_Main>().StopReload();
+                Debug.LogError("Invalid weapon index.");
+                return;
+            }
+            GameObject weaponToSwitchTo = weapons[index];
+            if (weaponToSwitchTo == null)
+            {
+                Debug.LogError("Weapon at index " + index + " is null.");
+                return;
+            }
+
+            // Disable the current weapon and stop the reload coroutine
+            if (currentWeapon.GetComponent<Weapon_BaseWeaponFire>() != null && currentWeapon.GetComponent<Weapon_Main>())
+            {
+                currentWeapon.GetComponent<Weapon_Main>().weaponIsReloading = false;
+                Debug.Log("Weapon Switch Test");
+                currentWeapon.GetComponent<Animator>().StopPlayback();
+                currentWeapon.GetComponent<Weapon_BaseWeaponFire>().StopReload();
+            }
+            else if (currentWeapon.GetComponent<Weapon_ShotgunFire>() != null && currentWeapon.GetComponent<Weapon_Main>())
+            {
+                currentWeapon.GetComponent<Weapon_Main>().weaponIsReloading = false;
+                Debug.Log("Weapon Switch Test");
+                currentWeapon.GetComponent<Animator>().StopPlayback();
             }
             currentWeapon.SetActive(false);
 
@@ -154,59 +358,36 @@ namespace Project.Weapon
             currentWeapon.SetActive(true); // Activate new weapon
         }
 
+
         private void InitWeaponSwitchLogic()
         {
-            // Check if the cooldown has passed
-            if (Time.time - lastSwitchTime < switchCooldown)
-            {
-                return; // Exit if we're still in the cooldown period
-            }
+            if (stopWeaponSwitch) return;
+            int currentIndex = weapons.IndexOf(currentWeapon);
+            if (Time.time - lastSwitchTime < switchCooldown) return;
 
             var weaponSwitchVal = weaponSwitch.ReadValue<Vector2>();
-
-            //Ensure that the input value does not excede 1 or -1
-            if(weaponSwitchVal.y > 1)
-            {
-                weaponSwitchVal.y = 1;
-            }
-
-            else if(weaponSwitchVal.y < -1)
-            {
-                weaponSwitchVal.y = -1;
-            }
-
-            // Check if the mouse scroll was used
             if (weaponSwitchVal.y != 0)
             {
                 OnWeaponSwitch?.Invoke();
-                int currentIndex = weapons.IndexOf(currentWeapon);
-
                 if (weaponSwitchVal.y > 0)
                 {
-                    // Scroll up
                     int nextWeaponIndex = (currentIndex + 1) % weapons.Count;
                     SwitchWeapon(nextWeaponIndex);
                 }
                 else if (weaponSwitchVal.y < 0)
                 {
-                    // Scroll down
                     int prevWeaponIndex = (currentIndex - 1 + weapons.Count) % weapons.Count;
                     SwitchWeapon(prevWeaponIndex);
                 }
-
-                // Do not activate the currentWeapon here since SwitchWeapon now handles it
-
-                // Update the last switch time
                 lastSwitchTime = Time.time;
             }
+            DropWeapon();
         }
 
         private void Update()
         {
             InitWeaponSwitchLogic();
-            currentInventorySize = weapons.Count();
+            currentInventorySize = weapons.Count;
         }
-
-
     }
 }

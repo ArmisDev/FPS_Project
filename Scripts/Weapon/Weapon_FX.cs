@@ -4,16 +4,19 @@ using UnityEngine;
 
 namespace Project.Weapon
 {
-    [RequireComponent(typeof(Weapon_Main))]
+    [RequireComponent(typeof(Weapon_WeaponType), typeof(Weapon_Main))]
     public class Weapon_FX : MonoBehaviour
     {
         [Header("Particle FX")]
         [SerializeField] private ParticleSystem muzzleFlash;
         [SerializeField] private ParticleSystem bulletEject;
-        [SerializeField] private GameObject bulletDecal;
+        //[SerializeField] private GameObject bulletDecal;
 
         //Components
-        private Weapon_Main weapon_Main;
+        private Weapon_Main weaponMain;
+        private Weapon_WeaponType weaponType;
+        private Weapon_BaseWeaponFire baseFire;
+        private Weapon_ShotgunFire shotgunFire;
 
         [Header("Smoke Attributes")]
         [SerializeField] private bool useSmoke;
@@ -22,24 +25,39 @@ namespace Project.Weapon
         [SerializeField] private float smokeTimerThreshold;
 
         //Private Smoke Variables
-        public int fireIncrement;
-        public float smokeTimer;
+        [HideInInspector] public int fireIncrement;
+        [HideInInspector] public float smokeTimer;
         private bool smokeCoroutineIsRunning;
 
         private void Awake()
         {
-            weapon_Main = GetComponent<Weapon_Main>();
-            weapon_Main.OnFire += PlayFX;
-            //weapon_Main.OnFire += SpawnHitDecal;
+            weaponMain = GetComponent<Weapon_Main>();
+            weaponType = GetComponent<Weapon_WeaponType>();
+
+            if (weaponType.currentFireMode == Weapon_WeaponType.WeaponFireModes.shotgun)
+            {
+                shotgunFire = GetComponent<Weapon_ShotgunFire>();
+                shotgunFire.OnFire += PlayFX;
+                return;
+            }
+            else
+            {
+                baseFire = GetComponent<Weapon_BaseWeaponFire>();
+                baseFire.OnFire += PlayFX;
+            }
         }
 
         private void OnDestroy()
         {
-            // Unsubscribe to prevent memory leaks
-            if (weapon_Main != null)
+            if (weaponType.currentFireMode == Weapon_WeaponType.WeaponFireModes.shotgun)
             {
-                weapon_Main.OnFire -= PlayFX;
-                //weapon_Main.OnFire -= SpawnHitDecal;
+                shotgunFire.OnFire -= PlayFX;
+                Debug.Log("Unsubscribed from shotgun fire event");
+            }
+            else
+            {
+                baseFire.OnFire -= PlayFX;
+                Debug.Log("Unsubscribed from base fire event");
             }
         }
 
@@ -63,7 +81,7 @@ namespace Project.Weapon
             }
 
             // Continue smoke for a set duration after firing stops
-            if (!weapon_Main.weaponIsFiring && smoke.isPlaying && smokeCoroutineIsRunning)
+            if (!weaponMain.weaponIsFiring && smoke.isPlaying && smokeCoroutineIsRunning)
             {
                 if (smokeTimer >= smokeTimerThreshold)
                 {

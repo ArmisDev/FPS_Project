@@ -3,26 +3,38 @@ using UnityEngine;
 
 namespace Project.Weapon
 {
-    [RequireComponent(typeof(Weapon_Main))]
+    [RequireComponent(typeof(Weapon_Main), typeof(Weapon_WeaponType))]
     public class Weapon_Recoil : MonoBehaviour
     {
         private GameObject recoilMover;
         [SerializeField] private float recoveryRate = 1f; // The speed at which the weapon recovers from recoil
-        private Weapon_Main weapon_Main;
+        
         private Quaternion startRotation;
         private Coroutine resetCoroutine;
 
+        //Components
+        private Weapon_Main weaponMain;
+        private Weapon_WeaponType weaponType;
+        private Weapon_BaseWeaponFire baseFire;
+        private Weapon_ShotgunFire shotgunFire;
+
         private void Awake()
         {
+            baseFire = GetComponent<Weapon_BaseWeaponFire>();
+            weaponMain = GetComponent<Weapon_Main>();
+            weaponType = GetComponent<Weapon_WeaponType>();
             recoilMover = GameObject.FindGameObjectWithTag("RecoilMover");
-            weapon_Main = GetComponent<Weapon_Main>();
-            if (weapon_Main != null)
+
+            if (weaponType.currentFireMode == Weapon_WeaponType.WeaponFireModes.shotgun)
             {
-                weapon_Main.OnFire += GenerateRecoil;
+                shotgunFire = GetComponent<Weapon_ShotgunFire>();
+                shotgunFire.OnFire += GenerateRecoil;
+                return;
             }
             else
             {
-                Debug.LogError("Weapon_Main reference not set on WeaponAudio.");
+                baseFire = GetComponent<Weapon_BaseWeaponFire>();
+                baseFire.OnFire += GenerateRecoil;
             }
         }
 
@@ -34,9 +46,13 @@ namespace Project.Weapon
         private void OnDestroy()
         {
             // Unsubscribe to prevent memory leaks
-            if (weapon_Main != null)
+            if (weaponType.currentFireMode == Weapon_WeaponType.WeaponFireModes.shotgun)
             {
-                weapon_Main.OnFire -= GenerateRecoil;
+                shotgunFire.OnFire -= GenerateRecoil;
+            }
+            else
+            {
+                baseFire.OnFire -= GenerateRecoil;
             }
         }
 
@@ -48,7 +64,7 @@ namespace Project.Weapon
             }
 
             // Apply immediate recoil effect
-            Quaternion recoilRotation = Quaternion.Euler(-weapon_Main.recoilAmount, Random.Range(-weapon_Main.recoilAmount, weapon_Main.recoilAmount), 0);
+            Quaternion recoilRotation = Quaternion.Euler(-weaponMain.recoilAmount, Random.Range(-weaponMain.recoilAmount, weaponMain.recoilAmount), 0);
             recoilMover.transform.localRotation *= recoilRotation;
 
             // Start the reset coroutine

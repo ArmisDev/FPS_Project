@@ -18,7 +18,12 @@ namespace Project.Weapon
 
         private void Update()
         {
-            animator.SetFloat("LocomotionBlend", playerMovement.playerVelocity.magnitude);
+            Vector3 moveValue = new(playerMovement.playerVelocity.x, 0, playerMovement.playerVelocity.z);
+            if(moveValue.magnitude < 0.05)
+            {
+                moveValue = Vector3.zero;
+            }
+            animator.SetFloat("LocomotionBlend", moveValue.magnitude);
         }
     }
 }
