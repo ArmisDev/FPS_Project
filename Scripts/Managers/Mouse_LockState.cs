@@ -2,31 +2,44 @@ using UnityEngine;
 
 public class Mouse_LockState : MonoBehaviour
 {
-    void Start()
-    {
-        // Lock the cursor to the center of the game window
-        Cursor.lockState = CursorLockMode.Locked;
+    // Enum to define control priority
+    public enum ControlPriority { None, Popup, PauseMenu }
 
-        // Hide the cursor from view
-        Cursor.visible = false;
+    public bool cursorVisibility = false;
+    private CursorLockMode cursorLockMode = CursorLockMode.Locked;
+    private ControlPriority currentPriority = ControlPriority.None;
+
+    private void Start()
+    {
+        UpdateCursorState();
     }
 
-    // Update is called once per frame
-    void Update()
+    private void UpdateCursorState()
     {
-        // Press ESC to unlock and show the cursor
-        if (Input.GetKeyDown(KeyCode.RightBracket))
-        {
-            Debug.Log("Test");
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+        Cursor.visible = cursorVisibility;
+        Cursor.lockState = cursorLockMode;
+    }
 
-        // Press F to re-lock and hide the cursor
-        if (Input.GetKeyDown(KeyCode.F))
+    public void RequestControl(ControlPriority priority, bool visibility, CursorLockMode mode)
+    {
+        if (priority >= currentPriority)
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            // Set new control priority
+            currentPriority = priority;
+
+            // Update cursor state
+            cursorVisibility = visibility;
+            cursorLockMode = mode;
+            UpdateCursorState();
+        }
+    }
+
+    public void ReleaseControl(ControlPriority priority)
+    {
+        // Only release control if the priority matches
+        if (currentPriority == priority)
+        {
+            currentPriority = ControlPriority.None;
         }
     }
 }
