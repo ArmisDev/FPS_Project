@@ -1,36 +1,64 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Pathfinding;
 
-public class AI_Mover : MonoBehaviour
+namespace Project.AI
 {
-    private Vector3 previousPosition;
-    public float smoothedSpeed;
-    public float smoothingFactor = 0.1f; // Adjust this value to control the smoothing
-
-    void Start()
+    [RequireComponent(typeof(AIDeathHandler))]
+    public class AI_Mover : MonoBehaviour
     {
-        previousPosition = transform.position;
-    }
+        [SerializeField] private float chaseRange;
+        private Vector3 previousPosition;
+        public float smoothedSpeed;
+        public float smoothingFactor = 0.1f; // Adjust this value to control the smoothing
+        private AIDeathHandler aIDeathHandler;
+        [SerializeField] AIPath aiPath;
 
-    float CalculateSpeed()
-    {
-        // Calculate the instantaneous speed
-        float distance = Vector3.Distance(transform.position, previousPosition);
-        float instantaneousSpeed = distance / Time.deltaTime;
+        private void Awake()
+        {
+            aIDeathHandler = GetComponent<AIDeathHandler>();
+        }
 
-        // Apply smoothing to the speed value
-        smoothedSpeed = Mathf.Lerp(smoothedSpeed, instantaneousSpeed, smoothingFactor * Time.deltaTime);
+        void Start()
+        {
+            previousPosition = transform.position;
+            aIDeathHandler.OnDeath += StopMovement;
+        }
 
-        // Update previousPosition for the next frame
-        previousPosition = transform.position;
+        private void OnDestroy()
+        {
+            aIDeathHandler.OnDeath -= StopMovement;
+        }
 
-        // Optionally, output the smoothed speed to the console
-        return smoothedSpeed;
-    }
+        //Get speed information of the AI Agent
+        float CalculateSpeed()
+        {
+            // Calculate the instantaneous speed
+            float distance = Vector3.Distance(transform.position, previousPosition);
+            float instantaneousSpeed = distance / Time.deltaTime;
 
-    private void Update()
-    {
-        CalculateSpeed();
+            // Apply smoothing to the speed value
+            smoothedSpeed = Mathf.Lerp(smoothedSpeed, instantaneousSpeed, smoothingFactor * Time.deltaTime);
+
+            // Update previousPosition for the next frame
+            previousPosition = transform.position;
+
+            // Optionally, output the smoothed speed to the console
+            return smoothedSpeed;
+        }
+
+        //Stop Movement
+        //Called by AIDeathHandler rn
+        void StopMovement()
+        {
+            smoothedSpeed = 0;
+            aiPath.canMove = false;
+        }
+
+        private void Update()
+        {
+            CalculateSpeed();
+        }
     }
 }
