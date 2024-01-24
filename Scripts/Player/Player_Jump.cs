@@ -17,7 +17,7 @@ namespace Project.Player
         private float nextInputTimer;
         public float ceilingCheckLength;
         [SerializeField] private float nextInputTimerThreshold;
-        [HideInInspector] public bool playerCanJump;
+        public bool playerCanJump;
         [SerializeField] private LayerMask ignoreLayer;
 
         //Components
@@ -52,12 +52,16 @@ namespace Project.Player
 
         void CeilingCheck()
         {
-            if(Physics.Raycast(transform.position + Vector3.up, Vector3.up, out RaycastHit hit, ceilingCheckLength, ~ignoreLayer))
+            Physics.Raycast(transform.position + Vector3.up, Vector3.up, out RaycastHit hit, ceilingCheckLength, ~ignoreLayer);
+            Debug.DrawRay(transform.position + Vector3.up, Vector3.up * ceilingCheckLength, Color.red);
+            if (hit.collider != null)
             {
-                if(hit.collider != null)
-                {
-                    playerCanJump = false; //Gets reset to true following conditions below.
-                }
+                playerCanJump = false; //Gets reset to true following conditions below.
+            }
+            else
+            {
+                playerCanJump = true;
+                return;
             }
         }
 

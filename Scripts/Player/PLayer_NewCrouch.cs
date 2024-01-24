@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,9 +14,14 @@ namespace Project.Player
         private Player_Movement playerMovement;
         private InputAction crouchAction;
 
-        public float standingHeight; // Variable to store the standing height
-        public bool isCrouching;
+        [HideInInspector] public float standingHeight; // Variable to store the standing height
+        [HideInInspector] public bool isCrouching;
         private bool heightChanged;
+
+        //Slide
+        [SerializeField] private bool canSlide;
+        [SerializeField] private float slideTime;
+        public float slideTimeReference;
 
         private void Awake()
         {
@@ -71,17 +77,24 @@ namespace Project.Player
                 // If player is crouching and there is no ceiling blocking, continue crouching
                 Crouch();
             }
-            else if (!isCrouching && !IsCeilingBlocking())
-            {
-                // If player is not crouching, stand up
-                StandUp();
-            }
 
             // If player is crouching and there is a ceiling blocking, force crouch
             if (isCrouching && IsCeilingBlocking())
             {
                 ForceCrouch();
             }
+
+            else if (!isCrouching && !IsCeilingBlocking())
+            {
+                // If player is not crouching, stand up
+                StandUp();
+            }
+
+            //else if (isCrouching && playerMovement.playerVelocity.magnitude > playerMovement.defaultSpeed && canSlide)
+            //{
+            //    slideTimeReference = slideTime;
+            //    StartCoroutine(SlideCoroutine());
+            //}
         }
 
         private void Crouch()
@@ -92,6 +105,45 @@ namespace Project.Player
             playerMovement.isCrouching = true;
             playerMovement.speedAdjuster = crouchSpeed;
         }
+
+        //private IEnumerator SlideCoroutine()
+        //{
+        //    playerMovement.characterController.height = crouchHeight;
+        //    heightChanged = false;
+        //    playerMovement.isCrouching = true;
+
+        //    float slideDuration = 1.0f; // Adjust this value to control the slide duration
+        //    float slideTimer = slideDuration;
+
+        //    while (slideTimer > 0)
+        //    {
+        //        Debug.Log("Slide Test");
+
+        //        // Calculate the slide time ratio
+        //        float slideTimeRatio = 1.0f - (slideTimer / slideDuration);
+
+        //        // Use Mathf.Lerp to interpolate the speedAdjuster value
+        //        playerMovement.speedAdjuster = Mathf.Lerp(playerMovement.speedAdjuster, crouchSpeed, slideTimeRatio);
+
+        //        // Decrement the timer
+        //        slideTimer -= Time.deltaTime;
+
+        //        // Ensure the slideTimer does not go negative
+        //        if (slideTimer < 0)
+        //        {
+        //            slideTimer = 0;
+        //        }
+
+        //        // Yield control back to Unity for one frame
+        //        yield return null;
+        //    }
+
+        //    // Ensure the final value is set to crouchSpeed
+        //    playerMovement.speedAdjuster = crouchSpeed;
+
+        //    // Reset isCrouching if needed
+        //    playerMovement.isCrouching = false;
+        //}
 
         private void StandUp()
         {

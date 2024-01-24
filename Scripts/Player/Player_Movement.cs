@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace Project.Player
 {
-    [RequireComponent(typeof(PlayerInput), typeof(CharacterController))]
+    [RequireComponent(typeof(PlayerInput))]
     public class Player_Movement : MonoBehaviour
     {
         #region - Components -
@@ -21,6 +21,8 @@ namespace Project.Player
         [SerializeField] private float playerMass;
         public float defaultSpeed;
         [SerializeField] private float acceleration; //acceleration controls the time it takes for player to reach full velocity
+        public bool stopMovement;
+        public bool stopLookRotation;
 
         [Header("Look Parameters")]
         [SerializeField] private float lookSensitivity;
@@ -118,12 +120,15 @@ namespace Project.Player
 
         private void Awake()
         {
+            stopMovement = false;
+            stopLookRotation = false;
+
             if(!bypassInitialState)
             {
                 currentState = State.walking;
             }
 
-            characterController = GetComponent<CharacterController>(); //Grabs Character Controller
+            characterController = GetComponentInParent<CharacterController>(); //Grabs Character Controller
             characterHeight = characterController.height;
 
             //Get Input System & InputActions
@@ -235,19 +240,26 @@ namespace Project.Player
 
         private void Update()
         {
-            LookLogic();
+            if(!stopLookRotation)
+            {
+                LookLogic();
+            }
         }
 
         private void FixedUpdate()
         {
-            switch(currentState)
+            //If we can move, we should move
+            if(!stopMovement)
             {
-                //Most if these states perform the same logic, but are still seperated due to external systems adjusting themselves based of different player states
-                //Ex: The Weapon_AnimationManager is dependent on this class and certian animations play based on the players state.
-                case State.walking:
-                    UpdateGravity();
-                    DefaultMovementLogic();
-                    break;
+                switch (currentState)
+                {
+                    //Most if these states perform the same logic, but are still seperated due to external systems adjusting themselves based of different player states
+                    //Ex: The Weapon_AnimationManager is dependent on this class and certian animations play based on the players state.
+                    case State.walking:
+                        UpdateGravity();
+                        DefaultMovementLogic();
+                        break;
+                }
             }
         }
     }
