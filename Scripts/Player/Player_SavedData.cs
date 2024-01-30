@@ -150,6 +150,14 @@ public class Player_SavedData : MonoBehaviour, IDataPersistance
         //Gameobject[] droppedWeapons = weaponInventory.droppedWeaponsContainer.GetComponentsInChildren<GameObject>();
 
         //Possible Solution:
+        //if (activeWeaponsArray != null)
+        //{
+        //     foreach(Gameobject weapon in currentWeapons)
+        //     {
+        //        data.CurrentWeapons.Add(weapon);
+        //        Debug.Log("Save system added " + weapon.name + " to list to be saved");
+        //     }
+        //}
         //foreach(Gameobject weapon in currentWeapons)
         //{
         //    data.CurrentWeapons.Add(weapon);
