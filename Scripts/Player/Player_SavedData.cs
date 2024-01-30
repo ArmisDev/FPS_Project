@@ -43,8 +43,15 @@ public class Player_SavedData : MonoBehaviour, IDataPersistance
 
         //Load weapon Logic
         // Clear current inventory and dropped weapons lists
+
+        //!!!Why am I clearing out the list? This is done on save!!!
         weaponInventory.weapons.Clear();
         weaponInventory.droppedWeapons.Clear();
+
+        //First thing we need to do is add weapons to be childed to the weaponInventory and set their visibility to false.
+        //Then do the same but for our dropped weapons.
+
+        //After adding everything, we just need to set the visibility of the current weapon to true.
 
         // Load current weapon
         string currentWeaponId = data.CurrentWeaponID; // assuming GameData has this field
@@ -114,7 +121,11 @@ public class Player_SavedData : MonoBehaviour, IDataPersistance
         //Then we add the weapons to our list
         Weapon_Main[] currentWeaponMains = weaponInventory.GetComponentsInChildren<Weapon_Main>();
         Weapon_Main[] droppedWeaponMains = weaponInventory.droppedWeaponsContainer.GetComponentsInChildren<Weapon_Main>();
-
+        
+        //We can only have one active weapon so outputting it to an array is dumb.
+        //Also the active weapon will be the same as the currentWeapon, so again ...dumb.
+        //Why am I creating two weaponMain arrays and not using them???
+        
         //Grab activeWeapon gameobjects from inventory (aka: Weapons we have picked up and not dropped.
         List<GameObject> activeWeaponsList = new();
         foreach (Transform child in weaponInventory.gameObject.transform)
@@ -131,7 +142,31 @@ public class Player_SavedData : MonoBehaviour, IDataPersistance
         }
         GameObject[] droppedWeaponsArray = droppedWeaponsList.ToArray();
 
-        //Now we want to comb through the array, add each weapon to our list here and the one referenced in our data component
+        //Wow I am dumb. This is literally only saving the "active weapons" (which will only be one) and nothing else. Nice :).
+        //FIX: All lines involved in saving the "current weapons" need to be deleted. Instead, we need to save all the childed weapons under the weapon inventory.
+        // after that, when we load the data back in we can set all gameobjects visibility to false and only set the current weapon to active.
+        //
+        //Gameobject[] currentWeapons = weaponInventory.GetComponentsInChildren<GameObject>();
+        //Gameobject[] droppedWeapons = weaponInventory.droppedWeaponsContainer.GetComponentsInChildren<GameObject>();
+
+        //Possible Solution:
+        //foreach(Gameobject weapon in currentWeapons)
+        //{
+        //    data.CurrentWeapons.Add(weapon);
+        //    Debug.Log("Save system added " + weapon.name + " to list to be saved");
+        //}
+        //if (droppedWeaponsArray != null)
+        //{
+        //    foreach (GameObject weapon in droppedWeaponsArray)
+        //    {
+        //        droppedWeapons.Add(weapon);
+        //        data.DroppedWeapons.Add(weapon);
+        //        Debug.Log("Save system added " + weapon.name + " to list to be saved");
+        //    }
+        //    AddWeaponIDToData(ref data, droppedWeaponMains, true);
+        //}
+        
+        //Now we want to comb through the array and add each weapon to our list here and the one referenced in our data component.
         //Then we want to call AddWeaponIDToData which will comb through the Weapon_Main components, find their respective IDs
         // and add them to the InventoryWeapon/DroppedWeapon IDs list.
         if (activeWeaponsArray != null)
