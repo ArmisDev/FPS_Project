@@ -15,10 +15,6 @@ This includes a fully functional and easily customizable weapons system, a robus
 - Inventory System
 - and much, much more...
 
-Watch the demo video below:
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/wOqnevJ0jyI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
 ## Demo Video
 
 Watch the demo video [here](https://www.youtube.com/watch?v=wOqnevJ0jyI).
