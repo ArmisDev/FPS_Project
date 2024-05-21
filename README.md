@@ -1,4 +1,5 @@
 # FPS Blueprint
+![Project Screenshot](Images/Screenshot.png)
 
 The primary aim of this project is to build a comprehensive, adaptable first-person shooter system with a focus on robustness and modularity. 
 
