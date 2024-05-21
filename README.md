@@ -8,9 +8,9 @@ This includes a fully functional and easily customizable weapons system, a robus
 - Multi Weapon Type Support
 - Physical Projectiles
 - Animation State Handler
-- Procedueral Recoil
+- Procedural Recoil
 - Complete FPS Movement System
-- Multi Ammo Type Functionallity
+- Multi Ammo Type Functionality
 - Interaction System
 - Inventory System
 - and much, much more...
@@ -18,4 +18,4 @@ This includes a fully functional and easily customizable weapons system, a robus
 
 Watch the demo video below:
 
-<iframe width="560" height="315" src="https://youtu.be/wOqnevJ0jyI](https://www.youtube.com/watch?v=wOqnevJ0jyI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/watch?v=wOqnevJ0jyI)" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
